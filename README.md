@@ -106,7 +106,6 @@ docker-compose -f ./oci-registry/docker-compose.yml up -d
 ```bash
 export DOCKHOST_IP_ADDR="192.168.208.7"
 docker login https://${DOCKHOST_IP_ADDR}:5000
-
 ```
 
 
@@ -585,6 +584,52 @@ NAME                  TYPE                                  DATA   AGE
 default-token-j7csp   kubernetes.io/service-account-token   3      4h40m
 pokus-oci-reg         kubernetes.io/dockerconfigjson        1      4h31m
 bash-3.2$
+
+```
+
+* Here are the secrets:
+
+```bash
+# --
+bash-3.2$ kubectl get secrets -n openfaas-fn
+NAME                  TYPE                                  DATA   AGE
+default-token-j7csp   kubernetes.io/service-account-token   3      4h40m
+pokus-oci-reg         kubernetes.io/dockerconfigjson        1      4h31m
+```
+* now we need :
+
+```bash
+# ------ # ------ # ------ # ------ # ------ # ------ # ------ # ------ #
+echo -en "------\nPlease enter Docker registry login:\nUsername: "; \
+read regusername; \
+echo -n "Password: "; \
+read -s regpassword; \
+echo""; \
+echo -n "Auth Token: "; \
+echo -n "$regusername:$regpassword" | base64; \
+unset regpassword; \
+unset regusername;
+# ------ # ------ # ------ # ------ # ------ # ------ # ------ # ------ #
+
+export OCI_ADMIN_USERNAME="ociadmin"
+export OCI_ADMIN_PASSWORD="ociadmin123"
+export OCI_AUTH_TOKEN=$(echo -n "${OCI_ADMIN_PASSWORD}:${OCI_ADMIN_PASSWORD}" | base64)
+echo "Auth Token: OCI_AUTH_TOKEN=[${OCI_AUTH_TOKEN}] "
+export DOCKHOST_IP_ADDR="192.168.208.7"
+cat << EOF > ./.pokus.docker.config.json
+{
+    "auths": {
+        "https://${DOCKHOST_IP_ADDR}:5000/v1/": {
+            "auth": "${OCI_AUTH_TOKEN}",
+            "email": "openfaas-ops@pok-us.io"
+        }
+    }
+}
+EOF
+
+kubectl create secret generic regcred \
+    --from-file=.dockerconfigjson=$PWD/.pokus.docker.config.json \
+    --type=kubernetes.io/dockerconfigjson
 
 ```
 

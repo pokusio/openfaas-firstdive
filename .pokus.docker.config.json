@@ -1,0 +1,8 @@
+{
+    "auths": {
+        "https://192.168.208.7:5000/v1/": {
+            "auth": "b2NpYWRtaW4xMjM6b2NpYWRtaW4xMjM=",
+            "email": "openfaas-ops@pok-us.io"
+        }
+    }
+}
