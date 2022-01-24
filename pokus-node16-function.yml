@@ -6,4 +6,4 @@ functions:
   pokus-node16-function:
     lang: node16
     handler: ./pokus-node16-function
-    image: node:16.3.0-alpine
+    image: 192.168.208.7:5000/pokus/faas-node16:latest

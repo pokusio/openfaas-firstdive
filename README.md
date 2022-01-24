@@ -1,10 +1,125 @@
+# Toc
 
+* Create the (Pokus) TLS Certificate and deploy private docker registry
+* create the `Kubernetes` Cluster : the tls cert is required to create the cluster (so that the cert signing authority is trusted by `Kubernetes` cluster nodes, and docker pull from `Kubernetes` cluster images from the docker private registry )
+* deploy `OpenFAAS` with `Helm`
+* develop a cloud function (a `faas` function) and deploy it.
+
+## Create the (Pokus) TLS Certificate and deploy private docker registry
+
+* In an empty folder, run :
+
+```bash
+export DOCKHOST_IP_ADDR="192.168.208.7"
+# auth/htpasswd (generated with `docker run --entrypoint htpasswd registry:2 -Bbn testuser testpassword`)
+# testuser:$2y$05$Bl9siDMe7ieQHLM8e7ifaOklKrHmXymbMqfmqXs7zssj6MMGQW4le
+export OCI_ADMIN_USERNAME="ociadmin"
+export OCI_ADMIN_PASSWORD="ociadmin123"
+
+export BASIC_AUTH_SECRET=$(docker run --name pokus_htpasswd --rm --entrypoint htpasswd httpd:2 -Bbn ${OCI_ADMIN_USERNAME} ${OCI_ADMIN_PASSWORD})
+
+echo "# --------------------------------------------- #"
+echo "    basic auth secret = [${BASIC_AUTH_SECRET}]"
+echo "# --------------------------------------------- #"
+
+mkdir -p ./oci-registry/auth/
+mkdir -p ./oci-registry/data/
+mkdir -p ./oci-registry/letsencrypt/
+mkdir -p ./oci-registry/certs/
+
+echo "${BASIC_AUTH_SECRET}" > ./oci-registry/auth/htpasswd
+
+
+
+cat << EOF > ./oci-registry/certs/pokus.conf
+[req]
+distinguished_name = req_distinguished_name
+x509_extensions = v3_req
+prompt = no
+[req_distinguished_name]
+C = FR
+ST = Auvergne
+L = SomeCity
+O = pokus
+OU = devopspokus
+CN = ${DOCKHOST_IP_ADDR}
+[v3_req]
+keyUsage = keyEncipherment, dataEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = IP:${DOCKHOST_IP_ADDR}
+[alt_names]
+DNS.1 = ${DOCKHOST_IP_ADDR}
+EOF
+
+
+# openssl req -new -x509 -text -key client.key -out client.cert -keyout ./oci-registry/certs/pokus.key -x509 -days 365 -out ./oci-registry/certs/pokus.cert -config ./oci-registry/certs/pokus.conf
+
+openssl req  -newkey rsa:4096 -nodes -sha256 -keyout ./oci-registry/certs/pokus.key -x509 -days 365 -out ./oci-registry/certs/pokus.crt -config ./oci-registry/certs/pokus.conf
+
+# https://blog.container-solutions.com/adding-self-signed-registry-certs-docker-mac
+# https://stackoverflow.com/questions/40822912/where-to-add-client-certificates-for-docker-for-mac
+mkdir -p ~/.docker/certs.d/192.168.208.7:5000/
+cp -f ./oci-registry/certs/pokus.crt ~/.docker/certs.d/${DOCKHOST_IP_ADDR}:5000/pokus.crt
+cp -f ./oci-registry/certs/pokus.key ~/.docker/certs.d/${DOCKHOST_IP_ADDR}:5000/pokus.key
+cp -f ./oci-registry/certs/pokus.crt ~/.docker/certs.d/${DOCKHOST_IP_ADDR}:5000/pokus.cert
+
+# -> below is for mac os, see next comments for GNU/Linux Debian
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./oci-registry/certs/pokus.crt
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/.docker/certs.d/${DOCKHOST_IP_ADDR}:5000/pokus.cert
+
+cat << EOF > ./oci-registry/docker-compose.yml
+version: '2'
+
+services:
+
+  registry:
+    restart: always
+    image: registry:2
+    ports:
+      - 5000:5000
+      - 443:5000
+    environment:
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
+      REGISTRY_HTTP_TLS_CERTIFICATE: /certs/pokus.crt
+      REGISTRY_HTTP_TLS_KEY: /certs/pokus.key
+      # REGISTRY_HTTP_TLS_LETSENCRYPT_CACHEFILE: /letsencrypt/cache
+      # REGISTRY_HTTP_TLS_LETSENCRYPT_EMAIL: your@email.com
+    volumes:
+      - ./data:/var/lib/registry
+      - ./auth:/auth
+      - ./certs:/certs
+      # - ./letsencrypt:/letsencrypt
+
+EOF
+
+
+docker-compose -f ./oci-registry/docker-compose.yml up -d
+# docker-compose -f ./oci-registry/docker-compose.yml logs -f
+
+# docker-compose -f ./oci-registry/docker-compose.yml down && docker-compose -f ./oci-registry/docker-compose.yml up -d
+
+```
+* then :
+
+```bash
+export DOCKHOST_IP_ADDR="192.168.208.7"
+docker login https://${DOCKHOST_IP_ADDR}:5000
+
+```
 
 ## Create the `Kubernetes` Cluster
 
-```bash
 
-k3d cluster create jblCluster  --servers 3 --api-port 0.0.0.0:6550 -a 3
+```bash
+export DOCKHOST_IP_ADDR="192.168.208.7"
+export PATH_TO_POKUS_CERT=${HOME}/.docker/certs.d/${DOCKHOST_IP_ADDR}:5000/pokus.cert
+k3d cluster create jblCluster  \
+  --servers 3 \
+  --api-port 0.0.0.0:6550 \
+  --volume ${PATH_TO_POKUS_CERT}:/etc/ssl/certs/pokus.cert \
+  -a 3
 
 ```
 
@@ -250,124 +365,74 @@ faas-cli new pokus-go-function --lang node16
 ```bash
 # build
 export HERAOHERE=$(pwd)
-export OF_TEMPLATE_IMAGE_NAME="node16"
-faas-cli build --build-arg AWESOME=true --image ${OF_TEMPLATE_IMAGE_NAME} -f pokus-node16-function.yml ${HERAOHERE}/pokus-node16-function/pokus-node16-function/handler.js
+# docker login https://${DOCKHOST_IP_ADDR}:5000
+export DOCKHOST_IP_ADDR="192.168.208.7"
+# "OF_TEMPLATE_IMAGE_NAME"  must be same image name as the
+# image property in the [pokus-node16-unction.yml]
+export OF_TEMPLATE_IMAGE_NAME="${DOCKHOST_IP_ADDR}:5000/pokus/faas-node16:latest"
+# faas-cli build --build-arg AWESOME=true --image "${OF_TEMPLATE_IMAGE_NAME}" -f pokus-node16-function.yml ${HERAOHERE}/pokus-node16-function/pokus-node16-function/handler.js
+faas-cli up --build-arg AWESOME=true --image "${OF_TEMPLATE_IMAGE_NAME}" -f pokus-node16-function.yml ${HERAOHERE}/pokus-node16-function/pokus-node16-function/handler.js
 # deploy
-faas-cli deploy --image node16 -f pokus-node16-function.yml ${HERAOHERE}/pokus-node16-function/pokus-node16-function/handler.js
+# faas-cli deploy --image node16 -f pokus-node16-function.yml ${HERAOHERE}/pokus-node16-function/pokus-node16-function/handler.js
 
 # test invoking (for the moment i have an issue requuest stays hanging...but the container image is successfully pulled from dockerhub)
 faas-cli invoke -f pokus-node16-function.yml pokus-node16-function
 
 # now deploy the curl as faas function
 faas-cli deploy --image curl --name jbcurl
-# ---
+# --- the one below works
 curl -X POST http://127.0.0.1:8080/function/jbcurl \
    -H "Content-Type: application/json" \
    -d 'https://randomuser.me/api/'
 
 ```
 
-## deploy private docker registry
+* Ok, now I had :
+  * to setup a private docker registry with self signed tls certificate.
+  * to trust the certificate as cert authority, on the dockerhost, so that docker login command can be run. the `${HOME}/.docker/config.json` will be injected into pipelines for the docker login
+  * finally, when you deploy the cloud function in openfaas using `faas-cli`, the openfaas will try and docker pull the docker image, from the privatre docker registry. so there we need username password for docker login n being able to
+
 
 ```bash
+export K8S_SECRET_NAME="pokus-oci-reg"
+# kubectl edit serviceaccount default -n openfaas-fn
+# # .... and add this at end of sevice account manifest :
+# imagePullSecrets:
+# - name: my-private-repo
+# --> not sure we can do that with helm --set
 
-# auth/htpasswd (generated with `docker run --entrypoint htpasswd registry:2 -Bbn testuser testpassword`)
-# testuser:$2y$05$Bl9siDMe7ieQHLM8e7ifaOklKrHmXymbMqfmqXs7zssj6MMGQW4le
 export OCI_ADMIN_USERNAME="ociadmin"
 export OCI_ADMIN_PASSWORD="ociadmin123"
+export OCI_ADMIN_EMAIL="ociadmin@pok-us.io"
 
-export BASIC_AUTH_SECRET=$(docker run --name pokus_htpasswd --rm --entrypoint htpasswd httpd:2 -Bbn ${OCI_ADMIN_USERNAME} ${OCI_ADMIN_PASSWORD})
+kubectl create secret docker-registry ${K8S_SECRET_NAME} \
+  --docker-username=${OCI_ADMIN_USERNAME} \
+  --docker-password=${OCI_ADMIN_PASSWORD} \
+  --docker-email=${OCI_ADMIN_EMAIL} \
+  --namespace openfaas-fn
 
-echo "# --------------------------------------------- #"
-echo "    basic auth secret = [${BASIC_AUTH_SECRET}]"
-echo "# --------------------------------------------- #"
-
-mkdir -p ./oci-registry/auth/
-mkdir -p ./oci-registry/data/
-mkdir -p ./oci-registry/letsencrypt/
-mkdir -p ./oci-registry/certs/
-
-echo "${BASIC_AUTH_SECRET}" > ./oci-registry/auth/htpasswd
-
-
-
-cat << EOF > ./oci-registry/certs/pokus.conf
-[req]
-distinguished_name = req_distinguished_name
-x509_extensions = v3_req
-prompt = no
-[req_distinguished_name]
-C = FR
-ST = Auvergne
-L = SomeCity
-O = pokus
-OU = devopspokus
-CN = 192.168.208.7
-[v3_req]
-keyUsage = keyEncipherment, dataEncipherment
-extendedKeyUsage = serverAuth
-subjectAltName = IP:192.168.208.7
-[alt_names]
-DNS.1 = 192.168.208.7
-EOF
-
-
-# openssl req -new -x509 -text -key client.key -out client.cert -keyout ./oci-registry/certs/pokus.key -x509 -days 365 -out ./oci-registry/certs/pokus.cert -config ./oci-registry/certs/pokus.conf
-
-openssl req  -newkey rsa:4096 -nodes -sha256 -keyout ./oci-registry/certs/pokus.key -x509 -days 365 -out ./oci-registry/certs/pokus.crt -config ./oci-registry/certs/pokus.conf
-
-# https://blog.container-solutions.com/adding-self-signed-registry-certs-docker-mac
-# https://stackoverflow.com/questions/40822912/where-to-add-client-certificates-for-docker-for-mac
-mkdir -p ~/.docker/certs.d/192.168.208.7:5000/
-cp -f ./oci-registry/certs/pokus.crt ~/.docker/certs.d/192.168.208.7:5000/pokus.crt
-cp -f ./oci-registry/certs/pokus.key ~/.docker/certs.d/192.168.208.7:5000/pokus.key
-cp -f ./oci-registry/certs/pokus.crt ~/.docker/certs.d/192.168.208.7:5000/pokus.cert
-
-# -> below is for mac os, see next comments for GNU/Linux Debian
-sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./oci-registry/certs/pokus.crt
-sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/.docker/certs.d/192.168.208.7:5000/pokus.cert
-
-cat << EOF > ./oci-registry/docker-compose.yml
-version: '2'
-
-services:
-
-  registry:
-    restart: always
-    image: registry:2
-    ports:
-      - 5000:5000
-      - 443:5000
-    environment:
-      REGISTRY_AUTH: htpasswd
-      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
-      REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
-      REGISTRY_HTTP_TLS_CERTIFICATE: /certs/pokus.crt
-      REGISTRY_HTTP_TLS_KEY: /certs/pokus.key
-      # REGISTRY_HTTP_TLS_LETSENCRYPT_CACHEFILE: /letsencrypt/cache
-      # REGISTRY_HTTP_TLS_LETSENCRYPT_EMAIL: your@email.com
-    volumes:
-      - ./data:/var/lib/registry
-      - ./auth:/auth
-      - ./certs:/certs
-      # - ./letsencrypt:/letsencrypt
-
-EOF
-
-
-docker-compose -f ./oci-registry/docker-compose.yml up -d
-# docker-compose -f ./oci-registry/docker-compose.yml logs -f
-
-# docker-compose -f ./oci-registry/docker-compose.yml down && docker-compose -f ./oci-registry/docker-compose.yml up -d
 
 ```
-* then :
+
+At this point, only one left issue :
+
+The self-signed TLS Certificate of the docker registry, is not trusted by the openfaas workers in the kubernetes cluster.
+
+So Ok, our problem is how to, with `k3d`, set the tls cert as trusted "inside everything" : I found https://github.com/rancher/k3d/discussions/687 .
+
+So the idea is that i have to add one option to create the kubernetes cluster, a volume mapping to put the cert in a given system directory :
 
 ```bash
 export DOCKHOST_IP_ADDR="192.168.208.7"
-docker login https://${DOCKHOST_IP_ADDR}:5000
+export PATH_TO_POKUS_CERT=${HOME}/.docker/certs.d/${DOCKHOST_IP_ADDR}:5000/pokus.cert
+k3d cluster create jblCluster  \
+  --servers 3 \
+  --api-port 0.0.0.0:6550 \
+  --volume ${PATH_TO_POKUS_CERT}:/etc/ssl/certs/pokus.cert \
+  -a 3
 
 ```
+
 
 ## ANNEX A. Notes on "go FAAS-ter at Netflix"
 
