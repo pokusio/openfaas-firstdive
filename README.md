@@ -714,3 +714,9 @@ And i will end with an open question :
 ```bash
 
 ```
+
+## Next step : KubeSeal and openfaas
+
+see https://docs.openfaas.com/reference/secrets/#secrets-in-git
+
+great case there
