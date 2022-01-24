@@ -518,13 +518,75 @@ k3d cluster create jblCluster  \
 
 
 
-And now, the last issue i have is that the docker pull from the kubernetes cluster, hitting the pprivate docker registry fails. Hre are the auth logs on the registry's side:
+And now, the last issue i have is that the docker pull from the kubernetes cluster, hitting the pprivate docker registry fails.
+
+Here are the auth logs on the registry's side:
 
 ```bash
 oci-registry-registry-1  | time="2022-01-24T11:20:53.192727493Z" level=warning msg="error authorizing context: basic authentication challenge for realm "Registry Realm": invalid authorization credential" go.version=go1.11.2 http.request.host="192.168.208.7:5000" http.request.id=17408089-da00-47c7-b0f9-39b757d6dd03 http.request.method=HEAD http.request.remoteaddr="172.19.0.1:59092" http.request.uri="/v2/pokus/faas-node16/manifests/0.0.1" http.request.useragent="containerd/v1.4.4-k3s1" vars.name="pokus/faas-node16" vars.reference=0.0.1
 ```
 
+And here is the description of the failing pod :
 
+```bash
+bash-3.2$ kubectl describe pod/pokus-node16-function-c495795c8-rptp6 -n openfaas-fn
+Name:         pokus-node16-function-c495795c8-rptp6
+Namespace:    openfaas-fn
+Priority:     0
+Node:         k3d-jblcluster-agent-0/172.20.0.5
+Start Time:   Mon, 24 Jan 2022 10:07:42 +0100
+Labels:       faas_function=pokus-node16-function
+              pod-template-hash=c495795c8
+Annotations:  prometheus.io.scrape: false
+Status:       Pending
+IP:           10.42.3.8
+IPs:
+  IP:           10.42.3.8
+Controlled By:  ReplicaSet/pokus-node16-function-c495795c8
+Containers:
+  pokus-node16-function:
+    Container ID:   
+    Image:          192.168.208.7:5000/pokus/faas-node16:0.0.1
+    Image ID:       
+    Port:           8080/TCP
+    Host Port:      0/TCP
+    State:          Waiting
+      Reason:       ImagePullBackOff
+    Ready:          False
+    Restart Count:  0
+    Liveness:       http-get http://:8080/_/health delay=2s timeout=1s period=2s #success=1 #failure=3
+    Readiness:      http-get http://:8080/_/health delay=2s timeout=1s period=2s #success=1 #failure=3
+    Environment:
+      fprocess:  node index.js
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-j7csp (ro)
+Conditions:
+  Type              Status
+  Initialized       True
+  Ready             False
+  ContainersReady   False
+  PodScheduled      True
+Volumes:
+  default-token-j7csp:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  default-token-j7csp
+    Optional:    false
+QoS Class:       BestEffort
+Node-Selectors:  <none>
+Tolerations:     node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                 node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason   Age                    From     Message
+  ----     ------   ----                   ----     -------
+  Warning  Failed   17m (x438 over 117m)   kubelet  Error: ImagePullBackOff
+  Normal   BackOff  2m6s (x505 over 117m)  kubelet  Back-off pulling image "192.168.208.7:5000/pokus/faas-node16:0.0.1"
+bash-3.2$ kubectl get secrets -n openfaas-fn
+NAME                  TYPE                                  DATA   AGE
+default-token-j7csp   kubernetes.io/service-account-token   3      4h40m
+pokus-oci-reg         kubernetes.io/dockerconfigjson        1      4h31m
+bash-3.2$
+
+```
 
 ## ANNEX A. Notes on "go FAAS-ter at Netflix"
 
