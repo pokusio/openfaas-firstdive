@@ -1,0 +1,17 @@
+{
+  "body":"{}",
+  "content-type":"application/json",
+  "pokus":"faas-node16",
+  "event": {
+              "body":{},
+              "headers": {
+                "host":"10.42.3.14:8080",
+                "user-agent":"curl/7.64.1",
+                "accept":"*/*",
+                "accept-encoding":"gzip",
+                "content-type":"application/json",
+                "x-call-id":"b7c84d28-1d79-46f2-bb30-3f56dce00d6e",
+                "x-forwarded-for":"127.0.0.1:40632",
+                "x-forwarded-host":"127.0.0.1:8080",
+                "x-start-time":"1643044482629758072"
+            },"method":"GET","query":{},"path":"/"}}
