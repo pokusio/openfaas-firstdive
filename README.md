@@ -117,15 +117,15 @@ export DOCKHOST_IP_ADDR="192.168.208.7"
 docker login https://${DOCKHOST_IP_ADDR}:5000
 
 docker pull datarhei/restreamer
-docker tag datarhei/restreamer ${DOCKHOST_IP_ADDR}:5000/datarhei/restreamer:2.7.4
-docker push ${DOCKHOST_IP_ADDR}:5000/datarhei/restreamer:2.7.4
+docker tag datarhei/restreamer ${DOCKHOST_IP_ADDR}:5000/datarhei/restreamer:2.7.9
+docker push ${DOCKHOST_IP_ADDR}:5000/datarhei/restreamer:2.7.9
 
 curl -ik --user ociadmin:ociadmin123 https://${DOCKHOST_IP_ADDR}/v2/_catalog
 
-curl -ik --user \
+curl -ik --user ociadmin:ociadmin123 \
   -X GET \
-  https://${DOCKHOST_IP_ADDR}/v2/datarhei/restreamer/manifests/latest \
-  ociadmin:ociadmin123
+  https://${DOCKHOST_IP_ADDR}/v2/pokus/restreamer/manifests/0.0.1
+
 
 
 ```
@@ -613,26 +613,33 @@ unset regusername;
 # should allow te kubernetes cluster to docker pull images from private registry
 export OCI_ADMIN_USERNAME="ociadmin"
 export OCI_ADMIN_PASSWORD="ociadmin123"
-export OCI_AUTH_TOKEN=$(echo -n "${OCI_ADMIN_PASSWORD}:${OCI_ADMIN_PASSWORD}" | base64)
-echo "Auth Token: OCI_AUTH_TOKEN=[${OCI_AUTH_TOKEN}] "
+export OCI_AUTH_TOKEN=$(echo -n "${OCI_ADMIN_USERNAME}:${OCI_ADMIN_PASSWORD}" | base64)
+echo -n "ociadmin:ociadmin123" | base64
+echo -n "Auth Token: OCI_AUTH_TOKEN=[${OCI_AUTH_TOKEN}] "
 export DOCKHOST_IP_ADDR="192.168.208.7"
 cat << EOF > ./.pokus.docker.config.json
 {
     "auths": {
-        "https://${DOCKHOST_IP_ADDR}:5000/v1/": {
+        "${DOCKHOST_IP_ADDR}:5000": {
             "auth": "${OCI_AUTH_TOKEN}",
             "email": "openfaas-ops@pok-us.io"
         }
     }
 }
 EOF
-
+kubectl -n openfaas-fn delete secret regcred || true
 kubectl create secret generic regcred \
     --from-file=.dockerconfigjson=$PWD/.pokus.docker.config.json \
     --type=kubernetes.io/dockerconfigjson \
     -n openfaas-fn
 
 ```
+
+Ok, I spotted one problem :
+* I generated the `${HOME}/.docker/config.json`  , by running docker login interactuvely
+* and the auth token in the `${HOME}/.docker/config.json` file,  is not equal to `echo -n "${OCI_ADMIN_USERNAME}:${OCI_ADMIN_PASSWORD}" | base64`
+* so, how do I?
+
 
 ## ANNEX A. Notes on "go FAAS-ter at Netflix"
 
