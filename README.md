@@ -632,6 +632,11 @@ kubectl create secret generic regcred \
     --from-file=.dockerconfigjson=$PWD/.pokus.docker.config.json \
     --type=kubernetes.io/dockerconfigjson \
     -n openfaas-fn
+kubectl -n openfaas-fn delete secret pokus-oci-reg || true
+kubectl create secret generic pokus-oci-reg \
+    --from-file=.dockerconfigjson=$PWD/.pokus.docker.config.json \
+    --type=kubernetes.io/dockerconfigjson \
+    -n openfaas-fn
 
 ```
 
