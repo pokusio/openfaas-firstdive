@@ -610,7 +610,7 @@ echo -n "$regusername:$regpassword" | base64; \
 unset regpassword; \
 unset regusername;
 # ------ # ------ # ------ # ------ # ------ # ------ # ------ # ------ #
-
+# should allow te kubernetes cluster to docker pull images from private registry
 export OCI_ADMIN_USERNAME="ociadmin"
 export OCI_ADMIN_PASSWORD="ociadmin123"
 export OCI_AUTH_TOKEN=$(echo -n "${OCI_ADMIN_PASSWORD}:${OCI_ADMIN_PASSWORD}" | base64)
@@ -629,7 +629,8 @@ EOF
 
 kubectl create secret generic regcred \
     --from-file=.dockerconfigjson=$PWD/.pokus.docker.config.json \
-    --type=kubernetes.io/dockerconfigjson
+    --type=kubernetes.io/dockerconfigjson \
+    -n openfaas-fn
 
 ```
 
