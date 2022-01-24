@@ -705,3 +705,12 @@ And i will end with an open question :
 * Do we need a new project for that ?
 * Are there features that we would need, taht we cannot find n any of the existing open source projects ?
 ...
+
+
+## Next step : add authentication to your FAAS functions
+
+* https://docs.openfaas.com/reference/authentication/ :
+
+```bash
+
+```
