@@ -109,17 +109,84 @@ docker login https://${DOCKHOST_IP_ADDR}:5000
 
 ```
 
+
+* Alright, now let's test the registry :
+
+```bash
+
+export DOCKHOST_IP_ADDR="192.168.208.7"
+docker login https://${DOCKHOST_IP_ADDR}:5000
+
+docker pull datarhei/restreamer
+docker tag datarhei/restreamer ${DOCKHOST_IP_ADDR}:5000/datarhei/restreamer:2.7.4
+docker push ${DOCKHOST_IP_ADDR}:5000/datarhei/restreamer:2.7.4
+
+curl -ik --user ociadmin:ociadmin123 https://${DOCKHOST_IP_ADDR}/v2/_catalog
+
+curl -ik --user \
+  -X GET \
+  https://${DOCKHOST_IP_ADDR}/v2/datarhei/restreamer/manifests/latest \
+  ociadmin:ociadmin123
+
+
+```
+
+```bash
+bash-3.2$ curl -ik --user ociadmin:ociadmin123 https://${DOCKHOST_IP_ADDR}/v2/_catalog
+HTTP/2 200
+content-type: application/json; charset=utf-8
+docker-distribution-api-version: registry/2.0
+x-content-type-options: nosniff
+content-length: 58
+date: Mon, 24 Jan 2022 06:46:47 GMT
+
+{"repositories":["pokus/faas-node16","pokus/restreamer"]}
+```
 ## Create the `Kubernetes` Cluster
 
 
 ```bash
 export DOCKHOST_IP_ADDR="192.168.208.7"
 export PATH_TO_POKUS_CERT=${HOME}/.docker/certs.d/${DOCKHOST_IP_ADDR}:5000/pokus.cert
+
+# --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + #
+# k3d cluster create jblCluster  \
+#   --servers 3 \
+#   --api-port 0.0.0.0:6550 \
+#   --volume ${PATH_TO_POKUS_CERT}:/etc/ssl/certs/pokus.cert \
+#   -a 3
+# --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + #
+
 k3d cluster create jblCluster  \
   --servers 3 \
   --api-port 0.0.0.0:6550 \
-  --volume ${PATH_TO_POKUS_CERT}:/etc/ssl/certs/pokus.cert \
+  --volume $PWD/oci-registry/certs/pokus.crt:/etc/ssl/certs/pokus.crt \
   -a 3
+
+```
+
+## create the kubernetes secret for private docker registry
+
+
+```bash
+export K8S_SECRET_NAME="pokus-oci-reg"
+# kubectl edit serviceaccount default -n openfaas-fn
+# # .... and add this at end of sevice account manifest :
+# imagePullSecrets:
+# - name: pokus-oci-reg
+#
+# --> not sure we can do that with helm --set
+
+export OCI_ADMIN_USERNAME="ociadmin"
+export OCI_ADMIN_PASSWORD="ociadmin123"
+export OCI_ADMIN_EMAIL="ociadmin@pok-us.io"
+
+kubectl create secret docker-registry ${K8S_SECRET_NAME} \
+  --docker-username=${OCI_ADMIN_USERNAME} \
+  --docker-password=${OCI_ADMIN_PASSWORD} \
+  --docker-email=${OCI_ADMIN_EMAIL} \
+  --namespace openfaas-fn
+
 
 ```
 
@@ -203,7 +270,7 @@ kubectl port-forward -n openfaas svc/gateway 8080:8080
 
 * which gives the following stdout :
 
-```
+```bash
 bash-3.2$ export OPENFAAS_URL=http://127.0.0.1:8080
 bash-3.2$ export OPENFAAS_URL=http://0.0.0.0:8080
 bash-3.2$ kubectl port-forward -n openfaas svc/gateway 8080:8080
@@ -218,10 +285,15 @@ Handling connection for 8080
 ```bash
 kubectl get svc -n openfaas gateway-external -o wide
 
+export DOCKHOST_IP_ADDR="192.168.208.7"
+export OPENFAAS_URL=http://0.0.0.0:8080
+export OPENFAAS_URL=http://${DOCKHOST_IP_ADDR}:8080
 export OPENFAAS_URL=http://127.0.0.1:8080
-export OF_PASSWORD="F3ofU2C9fyU2"
+export OF_PASSWORD="qZ9XOHLaMUqg"
 faas-cli login --password ${OF_PASSWORD}
 
+
+curl -ik --user ociadmin:ociadmin123 http://${DOCKHOST_IP_ADDR}:5000/v2/_catalog
 # If your login command is successfull, you will
 ```
 
@@ -370,7 +442,18 @@ export DOCKHOST_IP_ADDR="192.168.208.7"
 # "OF_TEMPLATE_IMAGE_NAME"  must be same image name as the
 # image property in the [pokus-node16-unction.yml]
 export OF_TEMPLATE_IMAGE_NAME="${DOCKHOST_IP_ADDR}:5000/pokus/faas-node16:latest"
-# faas-cli build --build-arg AWESOME=true --image "${OF_TEMPLATE_IMAGE_NAME}" -f pokus-node16-function.yml ${HERAOHERE}/pokus-node16-function/pokus-node16-function/handler.js
+
+faas-cli build --build-arg AWESOME=true --image "${OF_TEMPLATE_IMAGE_NAME}" -f pokus-node16-function.yml ${HERAOHERE}/pokus-node16-function/pokus-node16-function/handler.js
+
+docker images
+
+# docker push to private registry
+faas-cli push --build-arg AWESOME=true --image "${OF_TEMPLATE_IMAGE_NAME}" -f pokus-node16-function.yml ${HERAOHERE}/pokus-node16-function/pokus-node16-function/handler.js
+
+# test we find the image in registry
+curl -L -ik --user ociadmin:ociadmin123 https://${DOCKHOST_IP_ADDR}/v2/pokus/faas-node16/manifests/latest -X GET
+
+
 faas-cli up --build-arg AWESOME=true --image "${OF_TEMPLATE_IMAGE_NAME}" -f pokus-node16-function.yml ${HERAOHERE}/pokus-node16-function/pokus-node16-function/handler.js
 # deploy
 # faas-cli deploy --image node16 -f pokus-node16-function.yml ${HERAOHERE}/pokus-node16-function/pokus-node16-function/handler.js
@@ -399,7 +482,7 @@ export K8S_SECRET_NAME="pokus-oci-reg"
 # # .... and add this at end of sevice account manifest :
 # imagePullSecrets:
 # - name: my-private-repo
-# --> not sure we can do that with helm --set
+# --> not sure we can do that with [helm --set]
 
 export OCI_ADMIN_USERNAME="ociadmin"
 export OCI_ADMIN_PASSWORD="ociadmin123"
@@ -414,9 +497,9 @@ kubectl create secret docker-registry ${K8S_SECRET_NAME} \
 
 ```
 
-At this point, only one left issue :
+At this point, the next issue is :
 
-The self-signed TLS Certificate of the docker registry, is not trusted by the openfaas workers in the kubernetes cluster.
+> The self-signed TLS Certificate of the docker registry, is not trusted by the OpenFAAS workers in the kubernetes cluster.
 
 So Ok, our problem is how to, with `k3d`, set the tls cert as trusted "inside everything" : I found https://github.com/rancher/k3d/discussions/687 .
 
@@ -430,8 +513,17 @@ k3d cluster create jblCluster  \
   --api-port 0.0.0.0:6550 \
   --volume ${PATH_TO_POKUS_CERT}:/etc/ssl/certs/pokus.cert \
   -a 3
-
+# works, tested
 ```
+
+
+
+And now, the last issue i have is that the docker pull from the kubernetes cluster, hitting the pprivate docker registry fails. Hre are the auth logs on the registry's side:
+
+```bash
+oci-registry-registry-1  | time="2022-01-24T11:20:53.192727493Z" level=warning msg="error authorizing context: basic authentication challenge for realm "Registry Realm": invalid authorization credential" go.version=go1.11.2 http.request.host="192.168.208.7:5000" http.request.id=17408089-da00-47c7-b0f9-39b757d6dd03 http.request.method=HEAD http.request.remoteaddr="172.19.0.1:59092" http.request.uri="/v2/pokus/faas-node16/manifests/0.0.1" http.request.useragent="containerd/v1.4.4-k3s1" vars.name="pokus/faas-node16" vars.reference=0.0.1
+```
+
 
 
 ## ANNEX A. Notes on "go FAAS-ter at Netflix"
