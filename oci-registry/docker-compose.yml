@@ -1,0 +1,23 @@
+version: '2'
+
+services:
+
+  registry:
+    restart: always
+    image: registry:2
+    ports:
+      - 5000:5000
+      - 443:5000
+    environment:
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
+      REGISTRY_HTTP_TLS_CERTIFICATE: /certs/pokus.crt
+      REGISTRY_HTTP_TLS_KEY: /certs/pokus.key
+      # REGISTRY_HTTP_TLS_LETSENCRYPT_CACHEFILE: /letsencrypt/cache
+      # REGISTRY_HTTP_TLS_LETSENCRYPT_EMAIL: your@email.com
+    volumes:
+      - ./data:/var/lib/registry
+      - ./auth:/auth
+      - ./certs:/certs
+      # - ./letsencrypt:/letsencrypt

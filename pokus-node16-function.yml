@@ -1,0 +1,9 @@
+version: 1.0
+provider:
+  name: openfaas
+  gateway: http://127.0.0.1:8080
+functions:
+  pokus-node16-function:
+    lang: node16
+    handler: ./pokus-node16-function
+    image: node:16.3.0-alpine
