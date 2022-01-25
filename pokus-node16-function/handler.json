@@ -1,17 +1,2 @@
 {
-  "body":"{}",
-  "content-type":"application/json",
-  "pokus":"faas-node16",
-  "event": {
-              "body":{},
-              "headers": {
-                "host":"10.42.3.14:8080",
-                "user-agent":"curl/7.64.1",
-                "accept":"*/*",
-                "accept-encoding":"gzip",
-                "content-type":"application/json",
-                "x-call-id":"b7c84d28-1d79-46f2-bb30-3f56dce00d6e",
-                "x-forwarded-for":"127.0.0.1:40632",
-                "x-forwarded-host":"127.0.0.1:8080",
-                "x-start-time":"1643044482629758072"
-            },"method":"GET","query":{},"path":"/"}}
+  "body":"{\"url\":\"https://randomuser.me/api/\",\"name\":\"pokustest\"}","content-type":"application/json","pokus":"faas-node16","event":{"body":{"url":"https://randomuser.me/api/","name":"pokustest"},"headers":{"host":"10.42.3.14:8080","user-agent":"curl/7.64.1","transfer-encoding":"chunked","accept":"*/*","accept-encoding":"gzip","content-type":"application/json","x-call-id":"1c60ae8d-f9e4-4a60-a51b-83d906031f6a","x-forwarded-for":"127.0.0.1:43724","x-forwarded-host":"127.0.0.1:8080","x-start-time":"1643044723253807015"},"method":"POST","query":{},"path":"/"}}

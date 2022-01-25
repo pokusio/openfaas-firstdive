@@ -716,6 +716,7 @@ And i will end with an open question :
 * https://docs.openfaas.com/reference/authentication/ :
 
 ```bash
+npm i -s passport@0.5.2 passport-github2@0.1.12
 
 ```
 
@@ -724,3 +725,87 @@ And i will end with an open question :
 see https://docs.openfaas.com/reference/secrets/#secrets-in-git
 
 great case there
+
+
+## Next step : using secrets in faas functions
+
+openfaas has its own secret manager, and [here is an example](https://github.com/openfaas/workshop/blob/b2442ae095851c8e72fb1f28872f211a0b812e4c/issue-bot-secrets/stack.yml#L14) of how to use in a function,  a secret which we stored in openfaas secret manager :
+
+```bash
+export GH_PERSONAL_ACCESS_TOKEN="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"
+
+echo "${GH_PERSONAL_ACCESS_TOKEN}" | faas-cli secret create pokusbot-gh-token
+# cat ~/Downloads/derek.pem | faas-cli secret create pokusbot-gh-token
+
+# and rebuild n deploy faas function
+faas-cli up --build-arg AWESOME=true --image "${OF_TEMPLATE_IMAGE_NAME}" -f pokus-node16-function.yml ${HERAOHERE}/pokus-node16-function/pokus-node16-function/handler.js
+
+
+```
+* After that, if you `kubectl describe` the pod running for my faas function, i can see the `pokusbot-gh-token` secret mounted:
+
+```bash
+Name:         pokus-node16-function-8446b56b56-jdxlq
+Namespace:    openfaas-fn
+Priority:     0
+Node:         k3d-jblcluster-agent-0/172.20.0.5
+Start Time:   Mon, 24 Jan 2022 19:14:17 +0100
+Labels:       faas_function=pokus-node16-function
+              pod-template-hash=8446b56b56
+              uid=846802525
+Annotations:  prometheus.io.scrape: false
+Status:       Running
+IP:           10.42.3.15
+IPs:
+  IP:           10.42.3.15
+Controlled By:  ReplicaSet/pokus-node16-function-8446b56b56
+Containers:
+  pokus-node16-function:
+    Container ID:   containerd://c1fa693478b78d103b41b6417ed3dc0abd53f785838ee5e0e0acbfc2714889d3
+    Image:          192.168.208.7:5000/pokus/faas-node16:0.0.1
+    Image ID:       192.168.208.7:5000/pokus/faas-node16@sha256:a05382158f78403f59206461407741050cca02a16cfccd23c44c24245b43826a
+    Port:           8080/TCP
+    Host Port:      0/TCP
+    State:          Running
+      Started:      Mon, 24 Jan 2022 19:14:18 +0100
+    Ready:          True
+    Restart Count:  0
+    Liveness:       http-get http://:8080/_/health delay=2s timeout=1s period=2s #success=1 #failure=3
+    Readiness:      http-get http://:8080/_/health delay=2s timeout=1s period=2s #success=1 #failure=3
+    Environment:
+      fprocess:  node index.js
+    Mounts:
+      /var/openfaas/secrets from pokus-node16-function-projected-secrets (ro)
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-j7csp (ro)
+Conditions:
+  Type              Status
+  Initialized       True
+  Ready             True
+  ContainersReady   True
+  PodScheduled      True
+Volumes:
+  pokus-node16-function-projected-secrets:
+    Type:                Projected (a volume that contains injected data from multiple sources)
+    SecretName:          pokusbot-gh-token
+    SecretOptionalName:  <nil>
+  default-token-j7csp:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  default-token-j7csp
+    Optional:    false
+QoS Class:       BestEffort
+Node-Selectors:  <none>
+Tolerations:     node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                 node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type    Reason     Age    From               Message
+  ----    ------     ----   ----               -------
+  Normal  Scheduled  5m28s  default-scheduler  Successfully assigned openfaas-fn/pokus-node16-function-8446b56b56-jdxlq to k3d-jblcluster-agent-0
+  Normal  Pulling    5m28s  kubelet            Pulling image "192.168.208.7:5000/pokus/faas-node16:0.0.1"
+  Normal  Pulled     5m28s  kubelet            Successfully pulled image "192.168.208.7:5000/pokus/faas-node16:0.0.1" in 201.132326ms
+  Normal  Created    5m28s  kubelet            Created container pokus-node16-function
+  Normal  Started    5m28s  kubelet            Started container pokus-node16-function
+
+```
+* And now if I `kubectl exec` into the same pod interactively, I can check that the secret is mounted on `/var/openfaas/secrets/pokusbot-gh-token` inside the pod.
+
+See also https://docs.openfaas.com/cli/secrets/
