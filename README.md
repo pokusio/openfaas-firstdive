@@ -811,4 +811,19 @@ Events:
 See also https://docs.openfaas.com/cli/secrets/
 
 
-Ok excellent, I now have the source code and test to run, to have a faas function using a secret (from the openfaas secret) : The secret is a github User personal access token
+Ok excellent, I now have the source code and test to run, to have a faas function using a secret (from the openfaas secret) : The secret is a github User personal access token, which the faas function will use to create a git repo into a given github organization, using `github cli` (the github rest api)
+
+
+```bash
+bash-3.2$ curl -X POST http://127.0.0.1:8080/function/pokus-node16-function   -H "Content-Type: application/json"   -d '{ "url": "https://randomuser.me/api/", "name": "pokustest"}'
+{"body":"{\"url\":\"https://randomuser.me/api/\",\"name\":\"pokustest\"}","content-type":"application/json","pokus":"faas-node16","ghPTokenSecret":"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","pokusmsg":"Pokus: le lien [pokustest] a pour valeur [https://randomuser.me/api/] + Github Personal Access Token = [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]"}bash-3.2$ pwd
+/Users/jbl/openfaas
+```
+
+* which gives the following stdout :
+
+```bash
+bash-3.2$ curl -X POST http://127.0.0.1:8080/function/pokus-node16-function   -H "Content-Type: application/json"   -d '{ "url": "https://randomuser.me/api/", "name": "pokustest"}'
+{"body":"{\"url\":\"https://randomuser.me/api/\",\"name\":\"pokustest\"}","content-type":"application/json","pokus":"faas-node16","ghPTokenSecret":"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","pokusmsg":"Pokus: le lien [pokustest] a pour valeur [https://randomuser.me/api/] + Github Personal Access Token = [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]"}bash-3.2$ pwd
+/Users/jbl/openfaas
+```

@@ -34,8 +34,15 @@ const shelljs = require('shelljs') // npm i -s shelljs@0.8.5
  */
 module.exports = async (event, context) => { // context will be useful
 
+  // --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- //
   const ghPTokenSecretName = `pokusbot-gh-token`
   const ghPTokenSecretFilePath = `/var/openfaas/secrets/${ghPTokenSecretName}`
+  // --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- //
+  // that's to ...
+  const gh_org_or_user = "";
+  const gh_repo_name = "";
+
+  // --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- //
 
   // --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- //
   // loadReleaseManifest()  : void {
