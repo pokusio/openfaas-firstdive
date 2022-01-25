@@ -1,1 +1,1 @@
-{"body":"{\"url\":\"https://randomuser.me/api/\",\"name\":\"pokustest\"}","content-type":"application/json","pokus":"faas-node16","pokusmsg":"le lien [pokustest] a pour valeur [https://randomuser.me/api/]"}
+{"body":"{\"url\":\"https://randomuser.me/api/\",\"name\":\"pokustest\"}","content-type":"application/json","pokus":"faas-node16","ghPTokenSecret":"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","pokusmsg":"Pokus: le lien [pokustest] a pour valeur [https://randomuser.me/api/] + Github Personal Access Token = [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]"}

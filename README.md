@@ -809,3 +809,6 @@ Events:
 * And now if I `kubectl exec` into the same pod interactively, I can check that the secret is mounted on `/var/openfaas/secrets/pokusbot-gh-token` inside the pod.
 
 See also https://docs.openfaas.com/cli/secrets/
+
+
+Ok excellent, I now have the source code and test to run, to have a faas function using a secret (from the openfaas secret) : The secret is a github User personal access token
