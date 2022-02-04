@@ -246,7 +246,7 @@ bash-3.2$
 # MacOS and Linux users
 
 # If you run the script as a normal non-root user then the script
-# will download the faas-cli binary to the current folder
+# will download the `faas-cli` binary to the current folder
 $ curl -sL https://cli.openfaas.com | sudo sh
 
 # Windows users with (Git Bash)
@@ -816,8 +816,6 @@ Ok excellent, I now have the source code and test to run, to have a faas functio
 
 ```bash
 bash-3.2$ curl -X POST http://127.0.0.1:8080/function/pokus-node16-function   -H "Content-Type: application/json"   -d '{ "url": "https://randomuser.me/api/", "name": "pokustest"}'
-{"body":"{\"url\":\"https://randomuser.me/api/\",\"name\":\"pokustest\"}","content-type":"application/json","pokus":"faas-node16","ghPTokenSecret":"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","pokusmsg":"Pokus: le lien [pokustest] a pour valeur [https://randomuser.me/api/] + Github Personal Access Token = [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]"}bash-3.2$ pwd
-/Users/jbl/openfaas
 ```
 
 * which gives the following stdout :
@@ -826,4 +824,21 @@ bash-3.2$ curl -X POST http://127.0.0.1:8080/function/pokus-node16-function   -H
 bash-3.2$ curl -X POST http://127.0.0.1:8080/function/pokus-node16-function   -H "Content-Type: application/json"   -d '{ "url": "https://randomuser.me/api/", "name": "pokustest"}'
 {"body":"{\"url\":\"https://randomuser.me/api/\",\"name\":\"pokustest\"}","content-type":"application/json","pokus":"faas-node16","ghPTokenSecret":"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","pokusmsg":"Pokus: le lien [pokustest] a pour valeur [https://randomuser.me/api/] + Github Personal Access Token = [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]"}bash-3.2$ pwd
 /Users/jbl/openfaas
+```
+
+
+## Creating a new template (add github cli in docker image)
+
+*  Ok, `faas-cli` up command does not change the docker base image.
+*  now, if i look at project structure generation process, I understand that i need to create a new `OpenFAAS` template
+* https://erwinstaal.nl/posts/creating-a-simple-openfaas-template/
+
+
+
+```bash
+export NAME_OF_FAAS_TEMPLATE="node16"
+faas-cli new --list
+faas-cli template store list
+faas-cli template store pull ${NAME_OF_FAAS_TEMPLATE}
+
 ```

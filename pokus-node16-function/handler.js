@@ -45,9 +45,9 @@ module.exports = async (event, context) => { // context will be useful
   // --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- //
 
   // --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- //
-  // loadReleaseManifest()  : void {
+  // load secrets
   if (!fs.existsSync(ghPTokenSecretFilePath)) {
-    throw new Error("{[PokusFaasNode16]} - [" + `${ghPTokenSecretFilePath}` + "] does not exists, stopping release process");
+    throw new Error("{[PokusFaasNode16]} - [" + `${ghPTokenSecretFilePath}` + "] does not exists, stopping operations");
   } else {
     console.log("{[PokusFaasNode16]} - found [ghPTokenSecretFilePath] secret file located at [" + ghPTokenSecretFilePath + "]");
   }
@@ -56,6 +56,29 @@ module.exports = async (event, context) => { // context will be useful
   console.info("{[PokusFaasNode16]} - Parsed Github Personal Access Token from secret file located at [" + ghPTokenSecretFilePath + "] / ghPTokenSecret = [" + ghPTokenSecret + "]");
 
 
+
+
+  // --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- //
+  // github cli version
+  let ghCliCmdResult = shelljs.exec(`ghcli --version`);
+  if (ghCliCmdResult.code !== 0) {
+    console.log(`{[PokusFaasNode16]} - [Github CLI] - ccc`)
+  } else {
+    let ghCliCmdResultStdOUT = ghCliCmdResult.stdout;
+    ghCliCmdResultStdOUT = ghCliCmdResultStdOUT.trim();
+    console.log(`{[PokusFaasNode16]} -  [ghCliCmdResultStdOUT=[${ghCliCmdResultStdOUT}]] and [ghCliCmdResult.stdout=[${ghCliCmdResult.stdout}]]`)
+  }
+  // --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- + --- //
+  // github cli help
+  let ghCliHelpCmdResult = shelljs.exec(`ghcli --help`);
+  if (ghCliHelpCmdResult.code !== 0) {
+    // throw new Error(`{[PokusFaasNode16]} - [Github CLI] - An Error occurred executing the [git tag -l | grep ${tag_id}] shell command. Shell error was [` + ghCliHelpCmdResult.stderr + "] ")
+    console.log(`{[PokusFaasNode16]} - [Github CLI] - `)
+  } else {
+    let ghCliHelpCmdResultStdOUT = ghCliHelpCmdResult.stdout;
+    ghCliHelpCmdResultStdOUT = ghCliHelpCmdResultStdOUT.trim();
+    console.log(`{[PokusFaasNode16]} -  [ghCliHelpCmdResultStdOUT=[${ghCliHelpCmdResultStdOUT}]] and [ghCliHelpCmdResult.stdout=[${ghCliHelpCmdResult.stdout}]]`)
+  }
   // pokus msg
   const pokusmsg = `Pokus: le lien [${event.body.name}] a pour valeur [${event.body.url}] + Github Personal Access Token = [${ghPTokenSecret}]`
   const result = {

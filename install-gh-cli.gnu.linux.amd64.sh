@@ -13,4 +13,13 @@ cat ./gh_${GH_CLI_VERSION}_checksums.txt | grep "gh_${GH_CLI_VERSION}_linux_amd6
 mkdir -p ./.pokus.temp
 tar -xvf ./gh_${GH_CLI_VERSION}_linux_amd64.tar.gz -C ./.pokus.temp
 
-tree -alh -L 2 ./.pokus.temp
+tree -alh -L 3 ./.pokus.temp
+ls -alh ./.pokus.temp/gh_${GH_CLI_VERSION}_linux_amd64
+
+sudo mkdir -p /usr/local/bin/github-cli/${GH_CLI_VERSION}/
+sudo cp ./.pokus.temp/gh_${GH_CLI_VERSION}_linux_amd64/bin/gh /usr/local/bin/github-cli/${GH_CLI_VERSION}/gh
+sudo ln -s /usr/local/bin/github-cli/${GH_CLI_VERSION}/gh /usr/local/bin/ghcli
+
+tree -alh -L 3 /usr/local/bin/github-cli/
+
+ghcli --version
